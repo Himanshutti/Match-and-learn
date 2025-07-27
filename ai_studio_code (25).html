@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Match & Learn: ABC</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    
+    <!-- CSS STYLES EMBEDDED (CSS स्टाइल्स) -->
+    <style>
+        :root {
+            --bg-color: #87CEEB; /* Sky Blue */
+            --card-bg: #ffffff;
+            --card-drag-bg: #fffbe9;
+            --drop-zone-bg: rgba(255, 255, 255, 0.6);
+            --correct-color: #66bb6a;
+            --incorrect-color: #ef5350;
+            --primary-text: #5c4a3d;
+            --font-family: 'Fredoka One', cursive;
+        }
+
+        * { box-sizing: border-box; }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 15% 15%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 25%),
+                radial-gradient(circle at 85% 75%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 25%);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .game-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* --- Screens --- */
+        .screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .screen.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* --- Menu Screen --- */
+        #menu-screen h1 {
+            font-size: clamp(3rem, 10vw, 5rem);
+            color: white;
+            text-shadow: 4px 4px 0px #5c9ead;
+            margin-bottom: 40px;
+        }
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .menu-button {
+            padding: 20px 40px;
+            font-size: clamp(1.5rem, 5vw, 2rem);
+            font-family: var(--font-family);
+            border-radius: 20px;
+            border: none;
+            background-color: #ffca28;
+            color: var(--primary-text);
+            cursor: pointer;
+            box-shadow: 0 8px 0 #c79a1a;
+            transition: all 0.1s ease-in-out;
+        }
+        .menu-button:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #c79a1a;
+        }
+
+        /* --- Game Screen --- */
+        .game-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            position: absolute;
+            top: 20px;
+        }
+        .game-header h2 {
+            color: white;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            text-shadow: 2px 2px 0px #5c9ead;
+        }
+        .icon-button {
+            font-size: 3rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .icon-button:active {
+            transform: scale(0.9);
+        }
+
+        #game-board {
+            display: flex;
+            width: 100%;
+            max-width: 900px;
+            height: 80%;
+            justify-content: space-around;
+            margin-top: 80px;
+        }
+        .column {
+            width: 45%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-around;
+            gap: 15px;
+        }
+
+        /* --- Draggable Items & Drop Zones --- */
+        .draggable-item, .drop-zone {
+            width: 130px;
+            height: 130px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(3rem, 10vw, 5rem);
+            border-radius: 25px;
+            color: var(--primary-text);
+        }
+
+        .draggable-item {
+            background-color: var(--card-bg);
+            box-shadow: 0 6px 0 #b3b3b3;
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .draggable-item.dragging {
+            background-color: var(--card-drag-bg);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transform: scale(1.1);
+            cursor: grabbing;
+        }
+        .draggable-item.matched {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .draggable-item.word-item, .drop-zone.word-item {
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            width: 200px;
+        }
+
+        .drop-zone {
+            background-color: var(--drop-zone-bg);
+            border: 4px dashed rgba(255, 255, 255, 0.8);
+        }
+        .drop-zone.drop-active {
+            border-color: #ffca28;
+            transform: scale(1.05);
+        }
+        .drop-zone.correct {
+            background-color: var(--correct-color);
+            border-color: white;
+            color: white;
+            animation: bounce 0.5s ease;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Shake animation for incorrect match */
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); }
+          20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+          40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* --- Level Complete Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            text-align: center;
+            color: var(--primary-text);
+            transform: scale(0.5);
+            transition: transform 0.3s ease-out;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-icon { font-size: 5rem; }
+        .modal-content h2 { font-size: 3rem; margin: 10px 0; }
+        .modal-content p { font-size: 1.5rem; margin: 0; }
+
+        /* --- Animation Elements --- */
+        .star {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-wrapper">
+        <!-- ===== MENU SCREEN (मेनू स्क्रीन) ===== -->
+        <div id="menu-screen" class="screen active">
+            <h1>Match & Learn</h1>
+            <div class="menu-buttons">
+                <button class="menu-button" data-mode="letters">🔠 Letter Matching</button>
+                <button class="menu-button" data-mode="words">🔤 Word Matching</button>
+            </div>
+        </div>
+
+        <!-- ===== GAME SCREEN (गेम स्क्रीन) ===== -->
+        <div id="game-screen" class="screen">
+            <header class="game-header">
+                <button id="home-btn" class="icon-button">🏠</button>
+                <h2 id="game-title">Match the Letters</h2>
+                <button id="sound-btn" class="icon-button">🔊</button>
+            </header>
+            <div id="game-board">
+                <div id="drag-container" class="column">
+                    <!-- Draggable items (खींचने वाले आइटम) यहाँ बनेंगे -->
+                </div>
+                <div id="drop-container" class="column">
+                    <!-- Drop zones (छोड़ने की जगह) यहाँ बनेंगे -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== LEVEL COMPLETE MODAL (लेवल पूरा होने पर) ===== -->
+        <div id="level-complete-modal" class="modal-overlay">
+            <div class="modal-content">
+                <span class="modal-icon">🎉</span>
+                <h2>Well Done!</h2>
+                <p>Ready for the next one?</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Star SVG for animations -->
+    <svg id="star-svg" style="display: none;" viewBox="0 0 512 512">
+        <path fill="#FFD700" d="M512 198.5l-176.9-15.8L256 16l-79.1 166.7L0 198.5l135.2 128.5L94.6 512 256 422.2 417.4 512l-40.6-185z"/>
+    </svg>
+
+    <!-- External Libraries (बाहरी लाइब्रेरी) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.3/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.3/Draggable.min.js"></script>
+
+    <!-- JAVASCRIPT LOGIC EMBEDDED (जावास्क्रिप्ट लॉजिक) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- गेम का डेटा ---
+            const gameData = {
+                letters: [
+                    { drag: 'a', drop: 'A' }, { drag: 'b', drop: 'B' }, { drag: 'c', drop: 'C' },
+                    { drag: 'd', drop: 'D' }, { drag: 'e', drop: 'E' }, { drag: 'f', drop: 'F' },
+                    { drag: 'g', drop: 'G' }, { drag: 'h', drop: 'H' }, { drag: 'i', drop: 'I' },
+                    { drag: 'j', drop: 'J' }, { drag: 'k', drop: 'K' }, { drag: 'l', drop: 'L' },
+                    { drag: 'm', drop: 'M' }, { drag: 'n', drop: 'N' }, { drag: 'o', drop: 'O' },
+                    { drag: 'p', drop: 'P' }, { drag: 'q', drop: 'Q' }, { drag: 'r', drop: 'R' },
+                    { drag: 's', drop: 'S' }, { drag: 't', drop: 'T' }, { drag: 'u', drop: 'U' },
+                    { drag: 'v', drop: 'V' }, { drag: 'w', drop: 'W' }, { drag: 'x', drop: 'X' },
+                    { drag: 'y', drop: 'Y' }, { drag: 'z', drop: 'Z' }
+                ],
+                words: [
+                    { drag: 'cat', drop: 'CAT' }, { drag: 'dog', drop: 'DOG' }, { drag: 'sun', drop: 'SUN' },
+                    { drag: 'ball', drop: 'BALL' }, { drag: 'star', drop: 'STAR' }, { drag: 'mom', drop: 'MOM' },
+                    { drag: 'dad', drop: 'DAD' }, { drag: 'sky', drop: 'SKY' }, { drag: 'ram', drop: 'RAM' }
+                ]
+            };
+
+            // --- DOM एलिमेंट्स ---
+            const menuScreen = document.getElementById('menu-screen');
+            const gameScreen = document.getElementById('game-screen');
+            const homeBtn = document.getElementById('home-btn');
+            const soundBtn = document.getElementById('sound-btn');
+            const gameTitle = document.getElementById('game-title');
+            const dragContainer = document.getElementById('drag-container');
+            const dropContainer = document.getElementById('drop-container');
+            const levelCompleteModal = document.getElementById('level-complete-modal');
+            const starSvg = document.getElementById('star-svg');
+
+            // --- गेम की स्थिति (स्टेट) ---
+            let currentMode = 'letters';
+            let currentPairs = [];
+            let matchesMade = 0;
+            let draggables = [];
+            let isSoundOn = true;
+
+            // --- साउंड सेटअप (HOWLER.JS) ---
+            // !! ज़रूरी: सुनिश्चित करें कि यह HTML फ़ाइल जहाँ है, वहीं 'assets/sounds' फ़ोल्डर भी मौजूद हो !!
+            const sounds = {
+                bgm: new Howl({ src: ['assets/sounds/bgm.mp3'], loop: true, volume: 0.3 }),
+                pop: new Howl({ src: ['assets/sounds/pop.mp3'] }),
+                correct: new Howl({ src: ['assets/sounds/correct.mp3'] }),
+                wrong: new Howl({ src: ['assets/sounds/wrong.mp3'] }),
+                levelComplete: new Howl({ src: ['assets/sounds/level-complete.mp3'] })
+            };
+            
+            function playSound(sound) {
+                if (isSoundOn && sounds[sound]) {
+                    sounds[sound].play();
+                }
+            }
+
+            // --- सहायक फंक्शन्स ---
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            // --- गेम का फ्लो ---
+            function startGame(mode) {
+                currentMode = mode;
+                menuScreen.classList.remove('active');
+                gameScreen.classList.add('active');
+                gameTitle.textContent = mode === 'letters' ? 'Match the Letters' : 'Match the Words';
+                playSound('bgm');
+                loadLevel();
+            }
+            
+            function goHome() {
+                gameScreen.classList.remove('active');
+                menuScreen.classList.add('active');
+                sounds.bgm.stop();
+                // मौजूदा Draggables को साफ़ करें
+                draggables.forEach(d => d.kill());
+                draggables = [];
+            }
+
+            function loadLevel() {
+                matchesMade = 0;
+                dragContainer.innerHTML = '';
+                dropContainer.innerHTML = '';
+                levelCompleteModal.classList.remove('active');
+
+                const data = shuffleArray([...gameData[currentMode]]);
+                currentPairs = data.slice(0, 4); // हर लेवल में 4 जोड़े दिखाएं
+
+                const dropItems = shuffleArray([...currentPairs]);
+
+                currentPairs.forEach((pair, index) => {
+                    // Draggable आइटम बनाएँ
+                    const dragItem = document.createElement('div');
+                    dragItem.className = `draggable-item ${currentMode === 'words' ? 'word-item' : ''}`;
+                    dragItem.textContent = pair.drag;
+                    dragItem.dataset.id = index;
+                    dragContainer.appendChild(dragItem);
+
+                    // Drop Zone बनाएँ
+                    const dropZone = document.createElement('div');
+                    dropZone.className = `drop-zone ${currentMode === 'words' ? 'word-item' : ''}`;
+                    dropZone.textContent = dropItems[index].drop;
+                    // यह लॉजिक सुनिश्चित करता है कि शफल होने के बाद भी ड्रॉप ज़ोन को सही ID मिले
+                    const correctDragItem = currentPairs.find(p => p.drop === dropItems[index].drop);
+                    dropZone.dataset.id = currentPairs.indexOf(correctDragItem);
+                    dropContainer.appendChild(dropZone);
+                });
+
+                initializeDraggables();
+            }
+
+            function initializeDraggables() {
+                // पहले पुराने इंस्टेंस को खत्म करें
+                if (window.Draggable) {
+                    draggables.forEach(d => d.kill());
+                }
+                draggables = [];
+
+                draggables = Draggable.create(".draggable-item", {
+                    type: "x,y",
+                    bounds: ".game-wrapper",
+                    onPress: function() {
+                        this.startZ = this.target.style.zIndex;
+                        this.target.style.zIndex = 100;
+                        this.target.classList.add('dragging');
+                        playSound('pop');
+                    },
+                    onRelease: function() {
+                        this.target.style.zIndex = this.startZ;
+                        this.target.classList.remove('dragging');
+                        
+                        let hit = false;
+                        const dropZones = document.querySelectorAll('.drop-zone');
+
+                        for (let zone of dropZones) {
+                            if (this.hitTest(zone, "50%")) {
+                                const correctDragPair = currentPairs[this.target.dataset.id];
+                                const dropPair = currentPairs[zone.dataset.id];
+                                
+                                if (correctDragPair.drop === dropPair.drop) {
+                                    // सही मैच
+                                    handleCorrectMatch(this.target, zone);
+                                    hit = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!hit) {
+                            // गलत मैच
+                            handleIncorrectMatch(this.target);
+                        }
+                    }
+                });
+            }
+            
+            function handleCorrectMatch(dragItem, dropZone) {
+                playSound('correct');
+                dragItem.classList.add('matched');
+                dropZone.classList.add('correct');
+                
+                // आगे की इंटरेक्शन बंद करें
+                const draggableInstance = Draggable.get(dragItem);
+                if (draggableInstance) draggableInstance.disable();
+
+                // ड्रॉप ज़ोन के केंद्र में एनिमेट करें
+                gsap.to(dragItem, {
+                    x: dropZone.offsetLeft + (dropZone.offsetWidth / 2) - dragItem.offsetLeft - (dragItem.offsetWidth / 2),
+                    y: dropZone.offsetTop + (dropZone.offsetHeight / 2) - dragItem.offsetTop - (dragItem.offsetHeight / 2),
+                    duration: 0.3,
+                    ease: "power2.inOut"
+                });
+                
+                showStarAnimation(dropZone);
+                matchesMade++;
+
+                if (matchesMade === currentPairs.length) {
+                    setTimeout(handleLevelComplete, 1000);
+                }
+            }
+
+            function handleIncorrectMatch(dragItem) {
+                playSound('wrong');
+                dragItem.classList.add('shake');
+                gsap.to(dragItem, { x: 0, y: 0, duration: 0.5, ease: "back.out(1.7)" });
+                setTimeout(() => dragItem.classList.remove('shake'), 500);
+            }
+            
+            function handleLevelComplete() {
+                playSound('levelComplete');
+                levelCompleteModal.classList.add('active');
+                setTimeout(loadLevel, 2500); // 2.5 सेकंड के बाद अगला लेवल लोड करें
+            }
+
+            function showStarAnimation(element) {
+                const rect = element.getBoundingClientRect();
+                for (let i = 0; i < 10; i++) {
+                    const star = starSvg.cloneNode(true);
+                    star.classList.add('star');
+                    document.body.appendChild(star);
+                    
+                    gsap.fromTo(star, {
+                        left: rect.left + rect.width / 2,
+                        top: rect.top + rect.height / 2,
+                        scale: 0,
+                        opacity: 1
+                    }, {
+                        left: `+=${(Math.random() - 0.5) * 200}`,
+                        top: `+=${(Math.random() - 0.5) * 200}`,
+                        scale: Math.random() * 1 + 0.5,
+                        opacity: 0,
+                        duration: 0.8,
+                        ease: "power1.out",
+                        onComplete: () => star.remove()
+                    });
+                }
+            }
+
+            // --- इवेंट लिस्टनर्स ---
+            menuScreen.addEventListener('click', (e) => {
+                if (e.target.classList.contains('menu-button')) {
+                    startGame(e.target.dataset.mode);
+                }
+            });
+
+            homeBtn.addEventListener('click', goHome);
+            
+            soundBtn.addEventListener('click', () => {
+                isSoundOn = !isSoundOn;
+                soundBtn.textContent = isSoundOn ? '🔊' : '🔇';
+                if (isSoundOn) {
+                    sounds.bgm.play();
+                } else {
+                    sounds.bgm.pause();
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
