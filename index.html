@@ -345,11 +345,11 @@
             // --- साउंड सेटअप (HOWLER.JS) ---
             // !! ज़रूरी: सुनिश्चित करें कि यह HTML फ़ाइल जहाँ है, वहीं 'assets/sounds' फ़ोल्डर भी मौजूद हो !!
             const sounds = {
-                bgm: new Howl({ src: ['assets/sounds/bgm.mp3'], loop: true, volume: 0.3 }),
-                pop: new Howl({ src: ['assets/sounds/pop.mp3'] }),
-                correct: new Howl({ src: ['assets/sounds/correct.mp3'] }),
-                wrong: new Howl({ src: ['assets/sounds/wrong.mp3'] }),
-                levelComplete: new Howl({ src: ['assets/sounds/level-complete.mp3'] })
+                bgm: new Howl({ src: ['assets/bgm.mp3'], loop: true, volume: 0.3 }),
+                pop: new Howl({ src: ['assets/pop.mp3'] }),
+                correct: new Howl({ src: ['assets/correct.mp3'] }),
+                wrong: new Howl({ src: ['assets/wrong.mp3'] }),
+                levelComplete: new Howl({ src: ['assets/level-complete.mp3'] })
             };
             
             function playSound(sound) {
